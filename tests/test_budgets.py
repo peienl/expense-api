@@ -44,6 +44,12 @@ def test_create_budget_invalid_limit_returns_422(client):
     assert response.status_code == 422
 
 
+def test_create_budget_unknown_category_returns_422(client):
+    payload = {"category": "NotARealCategory", "year": 2025, "month": 6, "monthly_limit": 100.0}
+    response = client.post("/budgets", json=payload)
+    assert response.status_code == 422
+
+
 def test_read_budget_status_empty_when_no_budgets(client):
     response = client.get("/budgets/2025-06")
     assert response.status_code == 200
@@ -119,6 +125,51 @@ def test_read_alerts_exceeded_level(client):
     data = response.json()
     assert len(data) == 1
     assert data[0]["category"] == "Food"
+    assert data[0]["level"] == "exceeded"
+
+
+def test_read_alerts_exactly_80_percent_is_warning(client):
+    """Exactly 80% of the limit should be classified as 'warning' (boundary inclusive)."""
+    client.post(
+        "/budgets",
+        json={"category": "Food", "year": _YEAR, "month": _MONTH, "monthly_limit": 100.0},
+    )
+    client.post("/expenses", json={"description": "Exactly 80%", "amount": 80.0, "category": "Food"})
+
+    response = client.get(f"/alerts/{_MONTH_STR}")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["percent_used"] == 80.0
+    assert data[0]["level"] == "warning"
+
+
+def test_read_alerts_just_under_80_percent_has_no_alert(client):
+    """Just under 80% of the limit should not trigger any alert."""
+    client.post(
+        "/budgets",
+        json={"category": "Food", "year": _YEAR, "month": _MONTH, "monthly_limit": 100.0},
+    )
+    client.post("/expenses", json={"description": "Just under 80%", "amount": 79.99, "category": "Food"})
+
+    response = client.get(f"/alerts/{_MONTH_STR}")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_read_alerts_exactly_100_percent_is_exceeded(client):
+    """Exactly 100% of the limit should be classified as 'exceeded' (boundary inclusive)."""
+    client.post(
+        "/budgets",
+        json={"category": "Food", "year": _YEAR, "month": _MONTH, "monthly_limit": 100.0},
+    )
+    client.post("/expenses", json={"description": "Exactly 100%", "amount": 100.0, "category": "Food"})
+
+    response = client.get(f"/alerts/{_MONTH_STR}")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["percent_used"] == 100.0
     assert data[0]["level"] == "exceeded"
 
 

@@ -6,10 +6,23 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class Category(str, Enum):
+    """Fixed set of known expense/budget categories."""
+
+    FOOD = "Food"
+    TRANSPORT = "Transport"
+    ENTERTAINMENT = "Entertainment"
+    UTILITIES = "Utilities"
+    HOUSING = "Housing"
+    HEALTHCARE = "Healthcare"
+    SHOPPING = "Shopping"
+    OTHER = "Other"
+
+
 class ExpenseBase(BaseModel):
     description: str = Field(..., min_length=1, examples=["Lunch with client"])
     amount: float = Field(..., gt=0, examples=[12.5])
-    category: Optional[str] = Field(default=None, examples=["Food"])
+    category: Optional[Category] = Field(default=None, examples=["Food"])
 
 
 class ExpenseCreate(ExpenseBase):
@@ -24,7 +37,7 @@ class ExpenseOut(ExpenseBase):
 
 
 class BudgetBase(BaseModel):
-    category: str = Field(..., min_length=1, examples=["Food"])
+    category: Category = Field(..., examples=["Food"])
     year: int = Field(..., ge=2000, le=3000, examples=[2025])
     month: int = Field(..., ge=1, le=12, examples=[6])
     monthly_limit: float = Field(..., gt=0, examples=[300.0])

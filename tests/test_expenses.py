@@ -39,6 +39,12 @@ def test_create_expense_missing_description(client):
     assert response.status_code == 422
 
 
+def test_create_expense_unknown_category_returns_422(client):
+    payload = {"description": "Mystery item", "amount": 5.0, "category": "NotARealCategory"}
+    response = client.post("/expenses", json=payload)
+    assert response.status_code == 422
+
+
 def test_get_expenses_empty(client):
     response = client.get("/expenses")
     assert response.status_code == 200
